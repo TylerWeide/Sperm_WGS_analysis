@@ -1,0 +1,40 @@
+#!/bin/bash
+#SBATCH --job-name=filter_merged_final
+#SBATCH --output=filter_merged_final.out
+#SBATCH --error=filter_merged_final.err
+#SBATCH --cpus-per-task=6
+#SBATCH --mem=60G
+#SBATCH --time=36:00:00
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+module load bcftools
+
+IN_DIR="/work/ABG/tjweide/Genomics/Mito_WGS_2025/VCF/Genotyped/Filtered/Merged"
+OUT_DIR="/work/ABG/tjweide/Genomics/Mito_WGS_2025/VCF/Genotyped/Filtered/Merged/Final"
+
+bcftools view -v snps -f PASS ${IN_DIR}/1.filtered.vcf.gz | \
+bcftools filter \
+  -i 'GT="het" && FMT/GQ>=20 && FMT/DP>=10 && FMT/DP<=60' \
+  -Oz -o ${OUT_DIR}/1.final.vcf.gz &
+
+# 2
+bcftools view -v snps -f PASS ${IN_DIR}/2.filtered.vcf.gz | \
+bcftools filter \
+  -i 'GT="het" && FMT/GQ>=20 && FMT/DP>=10 && FMT/DP<=60' \
+  -Oz -o ${OUT_DIR}/2.final.vcf.gz &
+
+# 3
+bcftools view -v snps -f PASS ${IN_DIR}/3.filtered.vcf.gz | \
+bcftools filter \
+  -i 'GT="het" && FMT/GQ>=20 && FMT/DP>=10 && FMT/DP<=60' \
+  -Oz -o ${OUT_DIR}/3.final.vcf.gz &
+
+wait
+
+# Index each output
+for ID in 1 2 3; do
+    tabix -p vcf ${OUT_DIR}/${ID}.final.vcf.gz &
+done
+
+wait

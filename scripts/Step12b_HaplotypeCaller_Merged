@@ -1,0 +1,24 @@
+#!/bin/bash
+#SBATCH --job-name=gatk_merged
+#SBATCH --output=gatk_merged.out
+#SBATCH --error=gatk_merged.err
+#SBATCH --ntasks=3
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=160G
+#SBATCH --time=240:00:00
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025/MarkDuplicates/Merged
+
+module load gatk
+
+REF=/work/ABG/tjweide/Genomics/References/GCF_000003025.6_Sscrofa11.1_genomic.fna
+OUTDIR=/work/ABG/tjweide/Genomics/Mito_WGS_2025/VCF/Merged
+
+gatk HaplotypeCaller -R $REF -I 1.dedup.SM.bam -O $OUTDIR/1.g.vcf.gz -ERC GVCF --native-pair-hmm-threads 12 &
+gatk HaplotypeCaller -R $REF -I 2.dedup.SM.bam -O $OUTDIR/2.g.vcf.gz -ERC GVCF --native-pair-hmm-threads 12 &
+gatk HaplotypeCaller -R $REF -I 3.dedup.SM.bam -O $OUTDIR/3.g.vcf.gz -ERC GVCF --native-pair-hmm-threads 12 &
+
+wait
+

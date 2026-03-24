@@ -1,0 +1,66 @@
+#!/bin/bash
+#SBATCH --time=60:00:00                        # Walltime (HH:MM:SS)
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=36
+#SBATCH --job-name="Trim_FastQC"
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+#SBATCH --output="Trim_FastQC.out"
+#SBATCH --error="Trim_FastQC.err"
+
+# LOAD REQUIRED MODULES
+module load fastqc
+module load trimgalore
+
+# NAVIGATE TO MERGED DIRECTORY
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025/Individual_fastq
+
+# RUN TRIMGALORE + FASTQC to ../FastQC/Trimmed and ../Trimmed respectively
+echo "🌿 Starting TrimGalore + FastQC job at: $(date)"
+
+# -------- Sample 1-1 --------
+echo "Running Trim_Galore on 1-1..."
+trim_galore --paired 1-1_R1_fastq.gz 1-1_R2_fastq.gz \
+  --fastqc \
+  --fastqc_args "--outdir=../FastQC/Trimmed -t 6" \
+  --output_dir ../Trimmed &
+
+# -------- Sample 1-2 --------
+echo "Running Trim_Galore on 1-2..."
+trim_galore --paired 1-2_R1_fastq.gz 1-2_R2_fastq.gz \
+  --fastqc \
+  --fastqc_args "--outdir=../FastQC/Trimmed -t 6" \
+  --output_dir ../Trimmed &
+
+# -------- Sample 2-1 --------
+echo "Running Trim_Galore on 2-1..."
+trim_galore --paired 2-1_R1_fastq.gz 2-1_R2_fastq.gz \
+  --fastqc \
+  --fastqc_args "--outdir=../FastQC/Trimmed -t 6" \
+  --output_dir ../Trimmed &
+
+# -------- Sample 2-2 --------
+echo "Running Trim_Galore on 2-2..."
+trim_galore --paired 2-2_R1_fastq.gz 2-2_R2_fastq.gz \
+  --fastqc \
+  --fastqc_args "--outdir=../FastQC/Trimmed -t 6" \
+  --output_dir ../Trimmed &
+
+# -------- Sample 3-1 --------
+echo "Running Trim_Galore on 3-1..."
+trim_galore --paired 3-1_R1_fastq.gz 3-1_R2_fastq.gz \
+  --fastqc \
+  --fastqc_args "--outdir=../FastQC/Trimmed -t 6" \
+  --output_dir ../Trimmed &
+
+# -------- Sample 3-2 --------
+echo "Running Trim_Galore on 3-2..."
+trim_galore --paired 3-2_R1_fastq.gz 3-2_R2_fastq.gz \
+  --fastqc \
+  --fastqc_args "--outdir=../FastQC/Trimmed -t 6" \
+  --output_dir ../Trimmed &
+
+# Wait for all background jobs to complete
+wait
+
+echo "✅ Trim + FastQC complete at: $(date)"

@@ -1,0 +1,51 @@
+#!/bin/bash
+#SBATCH --job-name=bam_qc_indiv
+#SBATCH --output=bam_qc_indiv.out
+#SBATCH --error=bam_qc_indiv.err
+#SBATCH --nodes=1
+#SBATCH --ntasks=6
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=120G
+#SBATCH --time=48:00:00
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025
+
+module load samtools
+
+# Define input BAMs (Individual samples)
+bam1="MarkDuplicates/Individual/1-1.dedup.rg.dedup.bam"
+bam2="MarkDuplicates/Individual/1-2.dedup.rg.dedup.bam"
+bam3="MarkDuplicates/Individual/2-1.dedup.rg.dedup.bam"
+bam4="MarkDuplicates/Individual/2-2.dedup.rg.dedup.bam"
+bam5="MarkDuplicates/Individual/3-1.dedup.rg.dedup.bam"
+bam6="MarkDuplicates/Individual/3-2.dedup.rg.dedup.bam"
+
+# Flagstat
+samtools flagstat $bam1 > sample1-1.flagstat.txt &
+samtools flagstat $bam2 > sample1-2.flagstat.txt &
+samtools flagstat $bam3 > sample2-1.flagstat.txt &
+samtools flagstat $bam4 > sample2-2.flagstat.txt &
+samtools flagstat $bam5 > sample3-1.flagstat.txt &
+samtools flagstat $bam6 > sample3-2.flagstat.txt &
+wait
+
+# Stats
+samtools stats $bam1 > sample1-1.stats.txt &
+samtools stats $bam2 > sample1-2.stats.txt &
+samtools stats $bam3 > sample2-1.stats.txt &
+samtools stats $bam4 > sample2-2.stats.txt &
+samtools stats $bam5 > sample3-1.stats.txt &
+samtools stats $bam6 > sample3-2.stats.txt &
+wait
+
+# Depth (coverage)
+echo "Sample,Average_Coverage" > coverage_summary_individual.csv
+for bam in $bam1 $bam2 $bam3 $bam4 $bam5 $bam6; do
+  sample=$(basename $bam .dedup.rg.dedup.bam)
+  avg_cov=$(samtools depth -a $bam | awk '{sum+=$3} END {if(NR>0) print sum/NR; else print 0}')
+  echo "$sample,$avg_cov" >> coverage_summary_individual.csv
+done
+
+echo "Individual BAM QC complete."

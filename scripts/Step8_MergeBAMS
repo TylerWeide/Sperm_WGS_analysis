@@ -1,0 +1,21 @@
+#!/bin/bash
+#SBATCH --job-name=Merge_BAMs
+#SBATCH --time=96:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=3
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=64G
+#SBATCH --output=Merge_BAMs.out
+#SBATCH --error=Merge_BAMs.err
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+module load samtools
+
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025
+
+samtools merge Merged/1.merged.bam Aligned_Individual/1-1.dedup.rg.bam Aligned_Individual/1-2.dedup.rg.bam &
+samtools merge Merged/2.merged.bam Aligned_Individual/2-1.dedup.rg.bam Aligned_Individual/2-2.dedup.rg.bam &
+samtools merge Merged/3.merged.bam Aligned_Individual/3-1.dedup.rg.bam Aligned_Individual/3-2.dedup.rg.bam &
+
+wait

@@ -1,0 +1,39 @@
+#!/bin/bash
+#SBATCH --time=10:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=36
+#SBATCH --job-name="Merging_fastq"
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#SBATCH --output="Step1a_output"
+#SBATCH --error="Step1a_error"
+
+
+# Navigate to working directory
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025
+
+# All initial R1/R2 merges for the individual files 
+zcat lane1/1-A01-1-1_S1_L001_R1_001.fastq.gz lane2/1-A01-1-1_S1_L002_R1_001.fastq.gz | gzip > Individual_fastq/1-1_R1_fastq.gz &
+zcat lane1/1-A01-1-1_S1_L001_R2_001.fastq.gz lane2/1-A01-1-1_S1_L002_R2_001.fastq.gz | gzip > Individual_fastq/1-1_R2_fastq.gz &
+
+zcat lane1/1-A02-1-2_S2_L001_R1_001.fastq.gz lane2/1-A02-1-2_S2_L002_R1_001.fastq.gz | gzip > Individual_fastq/1-2_R1_fastq.gz &
+zcat lane1/1-A02-1-2_S2_L001_R2_001.fastq.gz lane2/1-A02-1-2_S2_L002_R2_001.fastq.gz | gzip > Individual_fastq/1-2_R2_fastq.gz &
+
+zcat lane1/1-A03-2-1_S3_L001_R1_001.fastq.gz lane2/1-A03-2-1_S3_L002_R1_001.fastq.gz | gzip > Individual_fastq/2-1_R1_fastq.gz &
+zcat lane1/1-A03-2-1_S3_L001_R2_001.fastq.gz lane2/1-A03-2-1_S3_L002_R2_001.fastq.gz | gzip > Individual_fastq/2-1_R2_fastq.gz &
+
+zcat lane1/1-A04-2-2_S4_L001_R1_001.fastq.gz lane2/1-A04-2-2_S4_L002_R1_001.fastq.gz | gzip > Individual_fastq/2-2_R1_fastq.gz &
+zcat lane1/1-A04-2-2_S4_L001_R2_001.fastq.gz lane2/1-A04-2-2_S4_L002_R2_001.fastq.gz | gzip > Individual_fastq/2-2_R2_fastq.gz &
+
+zcat lane1/1-A05-3-1_S5_L001_R1_001.fastq.gz lane2/1-A05-3-1_S5_L002_R1_001.fastq.gz | gzip > Individual_fastq/3-1_R1_fastq.gz &
+zcat lane1/1-A05-3-1_S5_L001_R2_001.fastq.gz lane2/1-A05-3-1_S5_L002_R2_001.fastq.gz | gzip > Individual_fastq/3-1_R2_fastq.gz &
+
+zcat lane1/1-A06-3-2_S6_L001_R1_001.fastq.gz lane2/1-A06-3-2_S6_L002_R1_001.fastq.gz | gzip > Individual_fastq/3-2_R1_fastq.gz &
+zcat lane1/1-A06-3-2_S6_L001_R2_001.fastq.gz lane2/1-A06-3-2_S6_L002_R2_001.fastq.gz | gzip > Individual_fastq/3-2_R2_fastq.gz &
+
+# Wait for all background jobs
+wait
+
+echo "✅ All merges complete at: $(date)"
+

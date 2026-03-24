@@ -1,0 +1,44 @@
+#!/bin/bash
+#SBATCH --job-name=Update_SM
+#SBATCH --time=96:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=3
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=96G
+#SBATCH --output=Update_SM.out
+#SBATCH --error=Update_SM.err
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+module load picard
+
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025/Merged
+
+picard AddOrReplaceReadGroups \
+    I=1.merged.bam \
+    O=1.merged.SM.bam \
+    RGID=group1 \
+    RGLB=lib1 \
+    RGPL=illumina \
+    RGPU=unit1 \
+    RGSM=Boar1 &
+
+picard AddOrReplaceReadGroups \
+    I=2.merged.bam \
+    O=2.merged.SM.bam \
+    RGID=group2 \
+    RGLB=lib2 \
+    RGPL=illumina \
+    RGPU=unit2 \
+    RGSM=Boar2 &
+
+picard AddOrReplaceReadGroups \
+    I=3.merged.bam \
+    O=3.merged.SM.bam \
+    RGID=group3 \
+    RGLB=lib3 \
+    RGPL=illumina \
+    RGPU=unit3 \
+    RGSM=Boar3 &
+
+wait

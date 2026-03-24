@@ -1,0 +1,24 @@
+#!/bin/bash
+#SBATCH --job-name=Index_BAM
+#SBATCH --time=1:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=6
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=32G
+#SBATCH --output=Index_BAMs.out
+#SBATCH --error=Index_BAMs.err
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+module load samtools
+
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025/Aligned
+
+samtools index 1-1.sorted.bam &
+samtools index 1-2.sorted.bam &
+samtools index 2-1.sorted.bam &
+samtools index 2-2.sorted.bam &
+samtools index 3-1.sorted.bam &
+samtools index 3-2.sorted.bam &
+
+wait

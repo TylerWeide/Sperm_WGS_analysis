@@ -1,0 +1,35 @@
+#!/bin/bash
+#SBATCH --job-name=SortIndex_RG_BAMs
+#SBATCH --time=96:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=6
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=96G
+#SBATCH --output=SortIndex_RG_BAMs.out
+#SBATCH --error=SortIndex_RG_BAMs.err
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+module load samtools
+
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025/Aligned_Individual
+
+# --- Sorting in parallel ---
+samtools sort -@ 4 -o 1-1.dedup.rg.sorted.bam 1-1.dedup.rg.bam &
+samtools sort -@ 4 -o 1-2.dedup.rg.sorted.bam 1-2.dedup.rg.bam &
+samtools sort -@ 4 -o 2-1.dedup.rg.sorted.bam 2-1.dedup.rg.bam &
+samtools sort -@ 4 -o 2-2.dedup.rg.sorted.bam 2-2.dedup.rg.bam &
+samtools sort -@ 4 -o 3-1.dedup.rg.sorted.bam 3-1.dedup.rg.bam &
+samtools sort -@ 4 -o 3-2.dedup.rg.sorted.bam 3-2.dedup.rg.bam &
+
+wait
+
+# --- Indexing in parallel ---
+samtools index -@ 4 1-1.dedup.rg.sorted.bam &
+samtools index -@ 4 1-2.dedup.rg.sorted.bam &
+samtools index -@ 4 2-1.dedup.rg.sorted.bam &
+samtools index -@ 4 2-2.dedup.rg.sorted.bam &
+samtools index -@ 4 3-1.dedup.rg.sorted.bam &
+samtools index -@ 4 3-2.dedup.rg.sorted.bam &
+
+wait

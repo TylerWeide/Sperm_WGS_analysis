@@ -1,0 +1,24 @@
+#!/bin/bash
+#SBATCH --job-name=gatk_indiv
+#SBATCH --output=gatk_indiv.out
+#SBATCH --error=gatk_indiv.err
+#SBATCH --ntasks=3
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=160G
+#SBATCH --time=240:00:00
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025/MarkDuplicates/Individual
+
+module load gatk
+
+REF=/work/ABG/tjweide/Genomics/References/GCF_000003025.6_Sscrofa11.1_genomic.fna
+OUTDIR=/work/ABG/tjweide/Genomics/Mito_WGS_2025/VCF/Individual
+
+gatk HaplotypeCaller -R $REF -I 1-1.dedup.rg.dedup.bam -O $OUTDIR/1-1.g.vcf.gz -ERC GVCF --native-pair-hmm-threads 12 &
+gatk HaplotypeCaller -R $REF -I 1-2.dedup.rg.dedup.bam -O $OUTDIR/1-2.g.vcf.gz -ERC GVCF --native-pair-hmm-threads 12 &
+gatk HaplotypeCaller -R $REF -I 2-1.dedup.rg.dedup.bam -O $OUTDIR/2-1.g.vcf.gz -ERC GVCF --native-pair-hmm-threads 12 &
+
+wait
+

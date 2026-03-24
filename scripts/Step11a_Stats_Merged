@@ -1,0 +1,43 @@
+#!/bin/bash
+#SBATCH --job-name=merged_qc_stats
+#SBATCH --output=merged_qc_stats.out
+#SBATCH --error=merged_qc_stats.err
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=80G
+#SBATCH --time=48:00:00
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025
+
+module load samtools
+
+# Define input BAMs
+bam1="MarkDuplicates/Merged/1.dedup.SM.bam"
+bam2="MarkDuplicates/Merged/2.dedup.SM.bam"
+bam3="MarkDuplicates/Merged/3.dedup.SM.bam"
+
+# Run samtools flagstat in parallel
+samtools flagstat $bam1 > sample1.flagstat.txt &
+samtools flagstat $bam2 > sample2.flagstat.txt &
+samtools flagstat $bam3 > sample3.flagstat.txt &
+wait
+
+# Run samtools stats in parallel
+samtools stats $bam1 > sample1.stats.txt &
+samtools stats $bam2 > sample2.stats.txt &
+samtools stats $bam3 > sample3.stats.txt &
+wait
+
+# Compute average coverage from samtools depth
+echo "Sample,Average_Coverage" > coverage_summary.csv
+
+for bam in $bam1 $bam2 $bam3; do
+    sample=$(basename $bam .dedup.SM.bam)
+    avg_cov=$(samtools depth -a $bam | awk '{sum+=$3} END {if(NR>0) print sum/NR; else print 0}')
+    echo "$sample,$avg_cov" >> coverage_summary.csv
+done
+
+echo "Merged BAM QC complete."

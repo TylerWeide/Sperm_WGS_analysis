@@ -1,0 +1,43 @@
+#!/bin/bash
+#SBATCH --job-name=genotype_indiv_A
+#SBATCH --output=genotype_indiv_A.out
+#SBATCH --error=genotype_indiv_A.err
+#SBATCH --time=48:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=120G
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+module load gatk
+
+REF="/work/ABG/tjweide/Genomics/References/GCF_000003025.6_Sscrofa11.1_genomic.fna"
+IN_DIR="/work/ABG/tjweide/Genomics/Mito_WGS_2025/VCF/Individual"
+OUT_DIR="/work/ABG/tjweide/Genomics/Mito_WGS_2025/VCF/Genotyped/Individual"
+
+gatk GenotypeGVCFs \
+  -R $REF \
+  -V $IN_DIR/1-1.g.vcf.gz \
+  -O $OUT_DIR/1-1.vcf.gz \
+  -A DepthPerAlleleBySample \
+  -A StrandBiasBySample \
+  -A QualByDepth &
+
+gatk GenotypeGVCFs \
+  -R $REF \
+  -V $IN_DIR/1-2.g.vcf.gz \
+  -O $OUT_DIR/1-2.vcf.gz \
+  -A DepthPerAlleleBySample \
+  -A StrandBiasBySample \
+  -A QualByDepth &
+
+gatk GenotypeGVCFs \
+  -R $REF \
+  -V $IN_DIR/2-1.g.vcf.gz \
+  -O $OUT_DIR/2-1.vcf.gz \
+  -A DepthPerAlleleBySample \
+  -A StrandBiasBySample \
+  -A QualByDepth &
+
+wait
+

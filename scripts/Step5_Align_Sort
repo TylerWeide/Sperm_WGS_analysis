@@ -1,0 +1,38 @@
+#!/bin/bash
+#SBATCH --job-name=BWA_Align_Trimmed
+#SBATCH --time=120:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=36
+#SBATCH --mem=160G
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=ALL
+#SBATCH --output=BWA_Align_Trimmed.out
+#SBATCH --error=BWA_Align_Trimmed.err
+
+module load bwa
+module load samtools
+
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025/Trimmed
+
+REF="/work/ABG/tjweide/Genomics/References/GCF_000003025.6_Sscrofa11.1_genomic.fna.gz"
+
+bwa mem -t 6 $REF 1-1_R1_fastq.gz_val_1.fq.gz 1-1_R2_fastq.gz_val_2.fq.gz | \
+    samtools sort -@ 6 -o ../Aligned/1-1.sorted.bam &
+
+bwa mem -t 6 $REF 1-2_R1_fastq.gz_val_1.fq.gz 1-2_R2_fastq.gz_val_2.fq.gz | \
+    samtools sort -@ 6 -o ../Aligned/1-2.sorted.bam &
+
+bwa mem -t 6 $REF 2-1_R1_fastq.gz_val_1.fq.gz 2-1_R2_fastq.gz_val_2.fq.gz | \
+    samtools sort -@ 6 -o ../Aligned/2-1.sorted.bam &
+
+bwa mem -t 6 $REF 2-2_R1_fastq.gz_val_1.fq.gz 2-2_R2_fastq.gz_val_2.fq.gz | \
+    samtools sort -@ 6 -o ../Aligned/2-2.sorted.bam &
+
+bwa mem -t 6 $REF 3-1_R1_fastq.gz_val_1.fq.gz 3-1_R2_fastq.gz_val_2.fq.gz | \
+    samtools sort -@ 6 -o ../Aligned/3-1.sorted.bam &
+
+bwa mem -t 6 $REF 3-2_R1_fastq.gz_val_1.fq.gz 3-2_R2_fastq.gz_val_2.fq.gz | \
+    samtools sort -@ 6 -o ../Aligned/3-2.sorted.bam &
+
+wait

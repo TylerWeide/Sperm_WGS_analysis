@@ -1,0 +1,54 @@
+#!/bin/bash
+#SBATCH --job-name=filter_merged
+#SBATCH --output=filter_merged.out
+#SBATCH --error=filter_merged.err
+#SBATCH --time=24:00:00
+#SBATCH --cpus-per-task=6
+#SBATCH --mem=64G
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+module load gatk
+
+IN_DIR="/work/ABG/tjweide/Genomics/Mito_WGS_2025/VCF/Genotyped/Merged"
+OUT_DIR="/work/ABG/tjweide/Genomics/Mito_WGS_2025/VCF/Genotyped/Filtered/Merged"
+REPEAT_BED="/work/ABG/tjweide/Genomics/References/repeats.bed"
+
+gatk VariantFiltration \
+  -V $IN_DIR/1.vcf.gz \
+  -O $OUT_DIR/1.filtered.vcf.gz \
+  --mask $REPEAT_BED \
+  --mask-name "RepeatMask_filter" \
+  --filter-name "QD_filter"           --filter-expression "QD < 5.0" \
+  --filter-name "FS_filter"           --filter-expression "FS > 30.0" \
+  --filter-name "SOR_filter"          --filter-expression "SOR > 2.0" \
+  --filter-name "MQ_filter"           --filter-expression "MQ < 50.0" \
+  --filter-name "MQRankSum_filter"    --filter-expression "MQRankSum < -5.0" \
+  --filter-name "ReadPosRankSum_filter" --filter-expression "ReadPosRankSum < -3.0" &
+
+gatk VariantFiltration \
+  -V $IN_DIR/2.vcf.gz \
+  -O $OUT_DIR/2.filtered.vcf.gz \
+  --mask $REPEAT_BED \
+  --mask-name "RepeatMask_filter" \
+  --filter-name "QD_filter"           --filter-expression "QD < 5.0" \
+  --filter-name "FS_filter"           --filter-expression "FS > 30.0" \
+  --filter-name "SOR_filter"          --filter-expression "SOR > 2.0" \
+  --filter-name "MQ_filter"           --filter-expression "MQ < 50.0" \
+  --filter-name "MQRankSum_filter"    --filter-expression "MQRankSum < -5.0" \
+  --filter-name "ReadPosRankSum_filter" --filter-expression "ReadPosRankSum < -3.0" &
+
+gatk VariantFiltration \
+  -V $IN_DIR/3.vcf.gz \
+  -O $OUT_DIR/3.filtered.vcf.gz \
+  --mask $REPEAT_BED \
+  --mask-name "RepeatMask_filter" \
+  --filter-name "QD_filter"           --filter-expression "QD < 5.0" \
+  --filter-name "FS_filter"           --filter-expression "FS > 30.0" \
+  --filter-name "SOR_filter"          --filter-expression "SOR > 2.0" \
+  --filter-name "MQ_filter"           --filter-expression "MQ < 50.0" \
+  --filter-name "MQRankSum_filter"    --filter-expression "MQRankSum < -5.0" \
+  --filter-name "ReadPosRankSum_filter" --filter-expression "ReadPosRankSum < -3.0" &
+
+wait
+

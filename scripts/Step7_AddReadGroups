@@ -1,0 +1,59 @@
+#!/bin/bash
+#SBATCH --job-name=Add_RG_Parallel
+#SBATCH --output=Add_RG_Parallel.out
+#SBATCH --error=Add_RG_Parallel.err
+#SBATCH --time=60:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=6
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=32G
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+module load picard
+module load samtools
+
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025/Aligned
+
+OUTDIR="/work/ABG/tjweide/Genomics/Mito_WGS_2025/Aligned_Individual"
+
+picard AddOrReplaceReadGroups \
+    I=1-1.sorted.bam \
+    O=$OUTDIR/1-1.dedup.rg.bam \
+    RGID=group11 RGLB=lib11 RGPL=illumina RGPU=unit11 RGSM=Sample11 &
+
+picard AddOrReplaceReadGroups \
+    I=1-2.sorted.bam \
+    O=$OUTDIR/1-2.dedup.rg.bam \
+    RGID=group12 RGLB=lib12 RGPL=illumina RGPU=unit12 RGSM=Sample12 &
+
+picard AddOrReplaceReadGroups \
+    I=2-1.sorted.bam \
+    O=$OUTDIR/2-1.dedup.rg.bam \
+    RGID=group21 RGLB=lib21 RGPL=illumina RGPU=unit21 RGSM=Sample21 &
+
+picard AddOrReplaceReadGroups \
+    I=2-2.sorted.bam \
+    O=$OUTDIR/2-2.dedup.rg.bam \
+    RGID=group22 RGLB=lib22 RGPL=illumina RGPU=unit22 RGSM=Sample22 &
+
+picard AddOrReplaceReadGroups \
+    I=3-1.sorted.bam \
+    O=$OUTDIR/3-1.dedup.rg.bam \
+    RGID=group31 RGLB=lib31 RGPL=illumina RGPU=unit31 RGSM=Sample31 &
+
+picard AddOrReplaceReadGroups \
+    I=3-2.sorted.bam \
+    O=$OUTDIR/3-2.dedup.rg.bam \
+    RGID=group32 RGLB=lib32 RGPL=illumina RGPU=unit32 RGSM=Sample32 &
+
+wait
+
+samtools index $OUTDIR/1-1.dedup.rg.bam &
+samtools index $OUTDIR/1-2.dedup.rg.bam &
+samtools index $OUTDIR/2-1.dedup.rg.bam &
+samtools index $OUTDIR/2-2.dedup.rg.bam &
+samtools index $OUTDIR/3-1.dedup.rg.bam &
+samtools index $OUTDIR/3-2.dedup.rg.bam &
+
+wait

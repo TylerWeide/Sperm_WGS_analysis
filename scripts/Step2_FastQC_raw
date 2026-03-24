@@ -1,0 +1,35 @@
+#!/bin/bash
+#SBATCH --time=06:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=12     # 12 FastQC jobs
+#SBATCH --cpus-per-task=3        # 3 threads per FastQC job
+#SBATCH --job-name="FastQC_raw"
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+#SBATCH --output="FastQC_raw.out"
+#SBATCH --error="FastQC_raw.err"
+
+# Load module
+module load fastqc
+
+# Move to directory with merged fastq files
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025/Individual_fastq
+
+# Launch 12 FastQC jobs in parallel using 3 threads each
+fastqc 1-1_R1_fastq.gz -o ../FastQC/Raw -t 3 &
+fastqc 1-1_R2_fastq.gz -o ../FastQC/Raw -t 3 &
+fastqc 1-2_R1_fastq.gz -o ../FastQC/Raw -t 3 &
+fastqc 1-2_R2_fastq.gz -o ../FastQC/Raw -t 3 &
+fastqc 2-1_R1_fastq.gz -o ../FastQC/Raw -t 3 &
+fastqc 2-1_R2_fastq.gz -o ../FastQC/Raw -t 3 &
+fastqc 2-2_R1_fastq.gz -o ../FastQC/Raw -t 3 &
+fastqc 2-2_R2_fastq.gz -o ../FastQC/Raw -t 3 &
+fastqc 3-1_R1_fastq.gz -o ../FastQC/Raw -t 3 &
+fastqc 3-1_R2_fastq.gz -o ../FastQC/Raw -t 3 &
+fastqc 3-2_R1_fastq.gz -o ../FastQC/Raw -t 3 &
+fastqc 3-2_R2_fastq.gz -o ../FastQC/Raw -t 3 &
+
+# Wait for all background jobs to complete
+wait
+
+echo "✅ FastQC complete at: $(date)"

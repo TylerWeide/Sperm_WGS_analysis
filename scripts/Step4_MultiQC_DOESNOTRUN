@@ -1,0 +1,32 @@
+#!/bin/bash
+
+#SBATCH --job-name=MultiQC_trimmed
+#SBATCH --output=MultiQC_trimmed_%j.out
+#SBATCH --error=MultiQC_trimmed_%j.err
+#SBATCH --time=00:20:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=8G
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=tyweide@iastate.edu
+
+echo "🔍 Starting MultiQC at: $(date)"
+
+# Activate micromamba and MultiQC environment
+eval "$(micromamba shell hook --shell=bash)"
+micromamba activate multiqc_env
+
+# Set working directory
+cd /work/ABG/tjweide/Genomics/Mito_WGS_2025/FastQC/Trimmed || {
+    echo "❌ Failed to change to target directory"
+    exit 1
+}
+
+# Run MultiQC
+multiqc . -o ./MultiQC_Report || {
+    echo "❌ MultiQC failed"
+    exit 1
+}
+
+echo "✅ MultiQC finished at: $(date)"

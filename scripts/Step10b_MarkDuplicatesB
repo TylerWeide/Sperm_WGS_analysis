@@ -1,0 +1,45 @@
+#!/bin/bash
+#SBATCH --job-name=MarkDups_Individual
+#SBATCH --time=60:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=6
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=160G
+#SBATCH --output=MarkDupsB_Individual.out
+#SBATCH --error=MarkDupsB_Individual.err
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+module load picard
+
+IN_DIR=/work/ABG/tjweide/Genomics/Mito_WGS_2025/Aligned_Individual
+OUT_DIR=/work/ABG/tjweide/Genomics/Mito_WGS_2025/MarkDuplicates/Individual
+
+
+# Sample 1-1
+picard MarkDuplicates \
+  I=$IN_DIR/1-1.dedup.rg.sorted.bam \
+  O=$OUT_DIR/1-1.dedup.rg.dedup.bam \
+  M=$OUT_DIR/1-1.metrics.txt \
+  REMOVE_DUPLICATES=true \
+  CREATE_INDEX=true &
+
+# Sample 1-2
+picard MarkDuplicates \
+  I=$IN_DIR/1-2.dedup.rg.sorted.bam \
+  O=$OUT_DIR/1-2.dedup.rg.dedup.bam \
+  M=$OUT_DIR/1-2.metrics.txt \
+  REMOVE_DUPLICATES=true \
+  CREATE_INDEX=true &
+
+# Sample 2-1
+picard MarkDuplicates \
+  I=$IN_DIR/2-1.dedup.rg.sorted.bam \
+  O=$OUT_DIR/2-1.dedup.rg.dedup.bam \
+  M=$OUT_DIR/2-1.metrics.txt \
+  REMOVE_DUPLICATES=true \
+  CREATE_INDEX=true &
+
+wait
+
+

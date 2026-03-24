@@ -1,0 +1,46 @@
+#!/bin/bash
+#SBATCH --job-name=MarkDups_SM
+#SBATCH --time=60:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=3
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=160G
+#SBATCH --output=MarkDups_SM.out
+#SBATCH --error=MarkDups_SM.err
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+module load picard
+
+IN_DIR=/work/ABG/tjweide/Genomics/Mito_WGS_2025/Merged
+OUT_DIR=/work/ABG/tjweide/Genomics/Mito_WGS_2025/MarkDuplicates/Merged
+
+mkdir -p "$OUT_DIR"
+
+# Sample 1
+picard MarkDuplicates \
+  I=${IN_DIR}/1.merged.SM.sorted.bam \
+  O=${OUT_DIR}/1.dedup.SM.bam \
+  M=${OUT_DIR}/1.SM.metrics.txt \
+  REMOVE_DUPLICATES=true \
+  CREATE_INDEX=true &
+
+# Sample 2
+picard MarkDuplicates \
+  I=${IN_DIR}/2.merged.SM.sorted.bam \
+  O=${OUT_DIR}/2.dedup.SM.bam \
+  M=${OUT_DIR}/2.SM.metrics.txt \
+  REMOVE_DUPLICATES=true \
+  CREATE_INDEX=true &
+
+# Sample 3
+picard MarkDuplicates \
+  I=${IN_DIR}/3.merged.SM.sorted.bam \
+  O=${OUT_DIR}/3.dedup.SM.bam \
+  M=${OUT_DIR}/3.SM.metrics.txt \
+  REMOVE_DUPLICATES=true \
+  CREATE_INDEX=true &
+
+wait
+
+echo "All deduplication tasks complete."
