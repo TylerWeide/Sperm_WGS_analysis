@@ -33,7 +33,7 @@ Raw sequencing data were processed using a stepwise pipeline including:
 - Variant calling using GATK HaplotypeCaller
   - Individual samples
   - Merged populations
-- Joint genotyping using GATK
+- Genotyping and variant calling using GATK
 - Hard filtering of SNPs
 - Filtering for heterozygous SNPs
 - SNP-level summary statistics
