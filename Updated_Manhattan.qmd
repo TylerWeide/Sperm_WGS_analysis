@@ -1,0 +1,906 @@
+---
+title: "WGS code - part 1 (Manhattan + Stats)"
+author: "Tyler Weide"
+date: "October 20th, 2025"
+format:
+  html:
+    theme: "Cosmo"
+    toc: true
+    number-depth: 3
+    html-math-method: katex
+    code-fold: true
+    page-layout: full
+    embed-resources: true
+    standalone: true
+---
+
+# Setup Knitr options
+
+```{r}
+#| label: knitr_setup
+#| warning: false
+#| echo: false
+
+# set options for knitr (engine that will render everything)
+knitr::opts_chunk$set(echo       = TRUE,
+                      warning    = FALSE,
+                      error      = FALSE,
+                      message = FALSE,
+                      fig.height = 6,
+                      fig.width  = 8
+                      )
+
+```
+
+# Load in the Files
+```{r}
+#| label: setup_code 
+#| warning: FALSE
+#| echo: TRUE
+
+#==============================================================================#
+# Setup Options
+#==============================================================================#
+
+# remove all objects if restarting script
+
+rm(list=ls())
+
+# set options for R
+options(
+  tibble.width = Inf,   # print all columns in tibble
+  scipen = 999          # remove scientific notation
+  )
+
+suppressPackageStartupMessages(library(tidyverse))
+#==============================================================================#
+# Packages
+#==============================================================================#
+
+# load libraries
+library(readr)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(stringr)
+library(ggplot2)
+library(qqman)
+library(data.table)
+library(arrow)
+library(qvalue)
+#==============================================================================#
+
+#==============================================================================#
+
+# set all paths
+path_main    <- "."
+#path_data    <- str_c(path_main, "Data/",    sep="")
+#path_plots   <- str_c(path_main, "Plots",   sep="")
+#path_scripts <- str_c(path_main, "Scripts/", sep="")
+
+#==============================================================================#
+# Set Inputs
+#==============================================================================#
+
+
+# Function to load in the files (that have THE SAME column names)
+read_pop <- function(path) {
+  read_table(
+    file = path,
+    skip = 1,
+    col_names = c("CHROM","POS","ALT_DP","REF_DP","DP_TOTAL"),
+    col_types = "cnnnn")
+}
+
+# These are the files that we are loading in with the above function
+B1_low    <- read_pop("B1_low_AF_input.csv")
+B1_high   <- read_pop("B1_high_AF_input.csv")
+B1_merged <- read_pop("B1_merged_AF_input.csv")
+
+B2_low    <- read_pop("B2_low_AF_input.csv")
+B2_high   <- read_pop("B2_high_AF_input.csv")
+B2_merged <- read_pop("B2_merged_AF_input.csv")
+
+B3_low    <- read_pop("B3_low_AF_input.csv")
+B3_high   <- read_pop("B3_high_AF_input.csv")
+B3_merged <- read_pop("B3_merged_AF_input.csv")
+
+# This is the reference map that has the contig information --> chromosome number
+refmap <- read_delim(
+  file = "refseq_to_chr.tsv",
+  delim = "\t",
+  col_names = c("CHROM","CHR"),
+  col_types = "cc")
+
+```
+
+
+# Setting up the data after loading in
+## Merge the populations into 1 file per boar (Low, High, Merged)
+```{r}
+#| label: Merging populations into 1 file per boar
+#| warning: FALSE
+#| echo: TRUE
+
+## Merging the low, high, merged populations into 1 file, per boar 
+
+# Boar 1
+B1_all <- B1_low %>%
+  full_join(B1_high,  by = c("CHROM", "POS"), suffix = c("_low", "_high")) %>%
+  full_join(B1_merged, by = c("CHROM", "POS")) %>%
+  rename_with(~ paste0(., "_merged"), c("ALT_DP", "REF_DP", "DP_TOTAL"))
+
+# Boar 2
+B2_all <- B2_low %>%
+  full_join(B2_high,  by = c("CHROM", "POS"), suffix = c("_low", "_high")) %>%
+  full_join(B2_merged, by = c("CHROM", "POS")) %>%
+  rename_with(~ paste0(., "_merged"), c("ALT_DP", "REF_DP", "DP_TOTAL"))
+
+# Boar 3
+B3_all <- B3_low %>%
+  full_join(B3_high,  by = c("CHROM", "POS"), suffix = c("_low", "_high")) %>%
+  full_join(B3_merged, by = c("CHROM", "POS")) %>%
+  rename_with(~ paste0(., "_merged"), c("ALT_DP", "REF_DP", "DP_TOTAL"))
+
+```
+
+## Remove all 0's in either ALT_DP or REF_DP
+```{r}
+#| label: Removing 0's from ALT or REF reads
+#| warning: FALSE
+#| echo: TRUE
+
+# Function to count removed SNPs
+count_removed_snps <- function(before, after, boar_name) {
+  removed <- nrow(before) - nrow(after)
+  cat(boar_name, ":\n",
+      "  Original SNPs:", nrow(before), "\n",
+      "  Remaining SNPs:", nrow(after), "\n",
+      "  Removed SNPs:", removed, "\n\n")
+}
+
+# Before filtering (save copies)
+B1_before <- B1_all
+B2_before <- B2_all
+B3_before <- B3_all
+
+# Apply filtering to get rid of any SNP that has 0's in either ALT or REF Depth
+filter_zero_dp <- function(df) {
+  df %>%
+    filter(
+      ALT_DP_low    != 0,
+      REF_DP_low    != 0,
+      ALT_DP_high   != 0,
+      REF_DP_high   != 0,
+      ALT_DP_merged != 0,
+      REF_DP_merged != 0)
+}
+
+# Applying the above function to all of the populations)
+B1_all <- filter_zero_dp(B1_before)
+B2_all <- filter_zero_dp(B2_before)
+B3_all <- filter_zero_dp(B3_before)
+
+# Count and print summary
+count_removed_snps(B1_before, B1_all, "Boar 1")
+count_removed_snps(B2_before, B2_all, "Boar 2")
+count_removed_snps(B3_before, B3_all, "Boar 3")
+
+```
+
+## Calculating allele frequencies to each population per boar
+```{r}
+#| label: Calculating AF
+#| warning: FALSE
+#| echo: TRUE
+
+# Function that adds AF for each boar for the ALT AF
+add_AF <- function(df) {
+  df %>%
+    mutate(
+      AF_low    = ALT_DP_low    / (ALT_DP_low    + REF_DP_low),
+      AF_high   = ALT_DP_high   / (ALT_DP_high   + REF_DP_high),
+      AF_merged = ALT_DP_merged / (ALT_DP_merged + REF_DP_merged))
+}
+
+# Using the above function on all boars
+B1_all <- add_AF(B1_all)
+B2_all <- add_AF(B2_all)
+B3_all <- add_AF(B3_all)
+```
+
+## Filter SNPs that only have a heterozygous merged population (Merged_AF between 0.4-0.6) and add Chromosome number to each SNP
+```{r}
+#| label: Filter for heterozygous merged population
+#| warning: FALSE
+#| echo: TRUE
+
+# function to filter for heterozygous SNPs in merged population and add Chromosome number to B*_All nect to Contig info
+# Prints out how many SNPs are removed and kept, and saves them as a .csv
+process_boar <- function(df, name) {
+  filtered <- df %>%
+    filter(AF_merged >= 0.4 & AF_merged <= 0.6) %>%
+    left_join(refmap, by = "CHROM") %>%
+    relocate(CHR, .after = CHROM)
+  
+  cat(name, "- SNPs kept:", nrow(filtered),
+      "| SNPs removed:", nrow(df) - nrow(filtered), "\n")
+  
+  write.csv(filtered, paste0(name, "_QC_SNPs.csv"), row.names = FALSE)
+  return(filtered)
+}
+
+# Runs above function
+B1_all_filtered <- process_boar(B1_all, "Boar1")
+B2_all_filtered <- process_boar(B2_all, "Boar2")
+B3_all_filtered <- process_boar(B3_all, "Boar3")
+```
+
+## Filter for allele counts in Ref and Alt for all boars and all populations
+```{r}
+#| label: Filter for allele counts
+#| warning: FALSE
+#| echo: TRUE
+
+# function to filter for Allele counts, how many SNPs are kept/removed, and write a .csv of those SNPs per boar
+filter_dp <- function(df, name) {
+  out <- df %>%
+    dplyr::filter(
+      ALT_DP_low > 5,  REF_DP_low > 5,
+      ALT_DP_high > 5, REF_DP_high > 5,
+      ALT_DP_merged > 5, REF_DP_merged > 5)
+  cat(name, "- kept:", nrow(out), "| removed:", nrow(df) - nrow(out), "\n")
+  write.csv(out, paste0(name, "_QC_SNPs_DP.csv"), row.names = FALSE)
+  out
+}
+
+# Runs the above function
+B1_all_filtered <- filter_dp(B1_all_filtered, "Boar1")
+B2_all_filtered <- filter_dp(B2_all_filtered, "Boar2")
+B3_all_filtered <- filter_dp(B3_all_filtered, "Boar3")
+
+```
+
+# Stats and Plotting after filtering
+## Z test
+```{r}
+#| label: Binomial, Z test, Manhattan
+#| warning: FALSE
+#| echo: TRUE
+
+# Combine all boars into 1 object
+all_boars <- bind_rows(
+  B1_all_filtered %>% mutate(Boar = "Boar1"),
+  B2_all_filtered %>% mutate(Boar = "Boar2"),
+  B3_all_filtered %>% mutate(Boar = "Boar3"))
+
+
+# Summarize read counts for each SNP across all three boars
+# Each SNP (CHROM + POS) now has total ALT and REF counts in Low and High populations.
+counts <- all_boars %>%
+  group_by(CHROM, POS) %>%
+  summarise(
+    ALT_low = sum(ALT_DP_low),
+    REF_low = sum(REF_DP_low),
+    ALT_high = sum(ALT_DP_high),
+    REF_high = sum(REF_DP_high),
+    .groups = "drop") %>%
+  filter(ALT_low + REF_low > 0, ALT_high + REF_high > 0)
+
+# Compute the total read depth per population for each SNP
+n1 <- counts$ALT_low + counts$REF_low
+n2 <- counts$ALT_high + counts$REF_high
+
+# Calculate allele frequencies (ALT/total) for each population
+p1 <- counts$ALT_low / n1   
+p2 <- counts$ALT_high / n2  
+
+# Compute the pooled allele frequency across both groups
+p_pool <- (counts$ALT_low + counts$ALT_high) / (n1 + n2)
+
+# Compute the standard error for the pooled 2 proportion Z test
+se <- sqrt(p_pool * (1 - p_pool) * (1/n1 + 1/n2))
+
+# Compute the z-statistic for each SNP (difference / standard error)
+z <- (p1 - p2) / se
+
+# Convert the z-scores into two-sided p-values
+p_value <- 2 * pnorm(-abs(z))
+
+
+# Create a new data frame containing allele frequencies, delta_AF, and p/q-values + adding in z statistic
+ARD_all <- counts %>%
+  mutate(
+    AF_low = p1,
+    AF_high = p2,
+    delta_AF = p2 - p1,
+    z_stat = z,
+    p_value = p_value,
+    q_value = p.adjust(p_value, method = "BH"),
+    neglogP = -log10(p_value))
+
+# Adding CHR number next to contig information for each SNP, adding back SNP information
+ARD_all <- ARD_all %>%
+  left_join(refmap, by = "CHROM") %>%
+  relocate(CHR, .after = CHROM) 
+
+
+```
+
+## Manhattan Plot
+```{r}
+#| label: Manhattan Plot, Histogram, Log Uniform Q-Q 
+#| warning: FALSE
+#| echo: TRUE
+
+# Defines chromosome order
+chr_levels <- c(as.character(1:18), "X", "Y")
+
+# Make sure chromosomes and plotting order is correct and makes sure every snp has a -log10(p) value, if it doesn't, it will calculate
+man_df <- ARD_all %>%
+  filter(CHR %in% chr_levels) %>%
+  mutate(CHR = factor(CHR, levels = chr_levels)) %>%
+  arrange(CHR, POS) %>%
+  mutate(neglogP = ifelse(is.na(neglogP), -log10(p_value), neglogP))
+
+
+# Chromosome table that calculates lengths and offsets of the manhattan plot, where 1 ends, the other begins e.g, 3 = length of 2 + 1
+chr_tbl <- man_df %>%
+  group_by(CHR) %>%
+  summarise(chr_len = max(POS, na.rm = TRUE), .groups = "drop") %>%
+  mutate(tot = cumsum(chr_len) - chr_len)
+
+# Merges the offsets from above and computes cumulative base-pair position so they will all align continuously on x-axis
+man_df <- man_df %>%
+  left_join(chr_tbl, by = "CHR") %>%
+  mutate(BP_cum = POS + tot,
+         colgrp = as.integer(CHR) %% 2)
+
+# Computes chromosome centers for labeling of the X - axis (1:18, X, Y)
+axis_df <- chr_tbl %>%
+  mutate(center = tot + chr_len/2)
+
+# Set cutoff to -log10(p) = 4 (equivalent to p = 0.0001)
+cutoff_line <- 4
+
+# Plotting the actual Manhattan plot
+manhattan <- ggplot(man_df, aes(BP_cum, neglogP, color = factor(colgrp))) +
+  geom_point(size = 0.28, alpha = 0.85) +
+  scale_color_manual(values = c("black", "grey70")) +
+  scale_x_continuous(breaks = axis_df$center, labels = axis_df$CHR, expand = c(0,0)) +
+  scale_y_continuous(limits = c(0, 10)) +
+  geom_hline(yintercept = cutoff_line, color = "red3", linewidth = 0.7, alpha = 0.8) +
+  labs(title = "Allelic Ratio Distortion across all three Boars",
+       x = "Chromosome", y = expression(-log[10](p))) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(hjust = 0.5))
+
+manhattan
+
+# Saves the plot 
+ggsave("Manhattan_ARD_all3boars.png", manhattan, width = 10, height = 6, units = "in", dpi = 300)
+
+# Counts the number of significant snps above the FDR corrected line of 0.0001
+sig_snps <- man_df %>% filter(neglogP > 4)
+n_sig <- nrow(sig_snps)
+n_sig
+
+```
+
+### Histograms of P-values and Log Uniform Q-Q plot of Manhattan
+```{r}
+#| label: Histogram and Log Uniform Q-Q plots
+#| warning: FALSE
+#| echo: TRUE
+
+# Histogram of P values of the manhattan plot
+p_hist <- man_df %>%
+  mutate(p = 10^(-neglogP)) %>%
+  filter(is.finite(p), !is.na(p), p > 0, p <= 1) %>%
+  ggplot(aes(x = p)) +
+  geom_histogram(bins = 40, boundary = 0, closed = "left",
+                 color = "white", fill = "grey40") +
+  labs(
+    title = "P-value distribution (robust Z test)",
+    x = "p-value",
+    y = "Count") +
+  theme_minimal(base_size = 12)
+
+# Create object from man_df that has 10^(-neglogP) and filter for NAs
+p_longer <- man_df %>%
+  mutate(p = 10^(-neglogP)) %>%
+  filter(is.finite(p), !is.na(p), p > 0, p <= 1) %>%
+  mutate(nlogp = -log10(p))
+
+# Create Rank, expected vs. observed for QQ plot
+qq_df <- p_longer %>%
+  arrange(p) %>%
+  mutate(
+    rank = row_number(),
+    exp_u = (rank - 0.5) / n(),
+    exp_log = -log10(exp_u),
+    obs_log = nlogp)
+
+# Plotting QQ plot
+p_qq <- ggplot(qq_df, aes(x = exp_log, y = obs_log)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_point(size = 0.5, alpha = 0.5) +
+  labs(
+    title = "Q–Q plot against log-uniform null",
+    x = "Expected -log10(p) Uniform[0,1]",
+    y = "Observed -log10(p)") +
+  theme_minimal(base_size = 12)
+
+z_test <- ggplot(ARD_all, aes(x = z_stat)) +
+  geom_histogram(aes(y = ..density..), bins = 100, alpha = 0.6) +
+  stat_function(fun = dnorm, color = "red", size = 1) +
+  xlab("Z statistic") +
+  ggtitle("Z distribution with standard normal overlay")
+
+# Printing out the plots
+z_test
+p_hist
+p_qq
+
+# Save plots
+ggsave("Histogram of Z-test.png", z_test, width = 10, height = 6, dpi = 300)
+ggsave("Histogram of Manhattan plot P-values.png", p_hist, width = 10, height = 6, dpi = 300)
+ggsave("Q-Q plot of Manhattan plot P-values.png", p_qq, width = 10, height = 6, dpi = 300)
+
+
+# Calculate genomic inflation (are the observed test statistics more extreme than expected under the null? Should be ~ 1)
+lambda_gc <- function(p){
+  p <- p[is.finite(p)]
+  p <- pmin(pmax(p, 1e-300), 1 - 1e-16)
+  chisq <- qchisq(1 - p, 1)
+  median(chisq, na.rm = TRUE) / qchisq(0.5, 1)
+}
+
+# Print out value, anything over 1.20 is not good
+lambda_value <- lambda_gc(10^(-man_df$neglogP))
+lambda_value
+```
+
+
+## Ideogram style plot
+```{r}
+#| label: Ideogram plot
+#| warning: FALSE
+#| echo: TRUE
+
+# Right order, could have been called using previous chr_levels vector
+chr_order <- c(as.character(1:18), "X", "Y")
+
+# spacing controls for the plot
+spacing    <- 1.6  
+bar_height <- 0.7   
+
+# Chromosome lengths and y positions
+chr_tbl <- man_df %>%
+  filter(CHR %in% chr_order) %>%
+  group_by(CHR) %>%
+  summarise(chr_len = max(POS, na.rm = TRUE), .groups = "drop") %>%
+  mutate(
+    ord   = match(CHR, chr_order),
+    y_pos = (length(chr_order) - ord + 1) * spacing,          
+    xmin  = 0,
+    xmax  = chr_len / 1e6,
+    ymin  = y_pos - bar_height/2,
+    ymax  = y_pos + bar_height/2)
+
+# Significant SNPs at same y positions
+sig_pts <- man_df %>%
+  filter(CHR %in% chr_order, neglogP > 4) %>%                 
+  select(CHR, POS) %>%
+  left_join(chr_tbl %>% select(CHR, y_pos), by = "CHR") %>%
+  mutate(xMb = POS / 1e6)
+
+# Plotting the ideogram style map
+Ideogram_plot <- ggplot() +
+  geom_rect(data = chr_tbl,
+            aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = "grey88", color = NA) +
+  geom_point(data = sig_pts,
+           aes(x = xMb, y = y_pos),
+           size = 1.2,      
+           alpha = 0.8,
+           color = "#1F78B4") +
+  scale_y_continuous(
+    breaks = chr_tbl$y_pos,
+    labels = paste0("chr", chr_tbl$CHR),
+    expand = expansion(mult = c(0.02, 0.06))) +
+  labs(title = "Significant SNP positions",
+       x = "Position (Mb)", y = NULL) +
+  theme_classic(base_size = 14) +
+  theme(
+    panel.grid = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.y  = element_text(face = "bold"),
+    plot.title   = element_text(face = "bold", hjust = 0.5))
+
+Ideogram_plot
+
+ggsave("Significant_SNP_Ideogram.png", Ideogram_plot, width = 10, height = 6, dpi = 300)
+
+```
+# Pairing up SNPs with boar for identification
+## Find which SNPs map to which BOAR, CHROM, POS, and which SNPs are shared between
+```{r}
+#| label: Matching SNPs
+#| warning: FALSE
+#| echo: TRUE
+
+
+# Create list of significant SNPs from manhattan plot
+sig <- sig_snps %>% distinct(CHROM, POS, .keep_all = TRUE)
+
+# Filter these snps only by CHROM and POS
+b1_keys <- B1_all_filtered %>% distinct(CHROM, POS) %>% mutate(B1 = TRUE)
+b2_keys <- B2_all_filtered %>% distinct(CHROM, POS) %>% mutate(B2 = TRUE)
+b3_keys <- B3_all_filtered %>% distinct(CHROM, POS) %>% mutate(B3 = TRUE)
+
+# Merge these counts together, and get counts of how many SNPs are shared between each boar
+sig_boars <- sig %>%
+  left_join(b1_keys, by = c("CHROM","POS")) %>%
+  left_join(b2_keys, by = c("CHROM","POS")) %>%
+  left_join(b3_keys, by = c("CHROM","POS")) %>%
+  mutate(across(c(B1,B2,B3), ~replace_na(.x, FALSE)),
+         boar_count = B1 + B2 + B3,
+         boar_label = case_when(
+           boar_count == 3 ~ "B1,B2,B3",
+           boar_count == 2 & B1 & B2 ~ "B1,B2",
+           boar_count == 2 & B1 & B3 ~ "B1,B3",
+           boar_count == 2 & B2 & B3 ~ "B2,B3",
+           boar_count == 1 & B1 ~ "B1",
+           boar_count == 1 & B2 ~ "B2",
+           boar_count == 1 & B3 ~ "B3",
+           TRUE ~ "None"))
+
+# Summarize these counts
+sig_counts <- sig_boars %>% count(boar_label, sort = TRUE)
+
+# Make a .csv file with the SNP information for all significant SNPs
+write_csv(sig_boars, "ARD_sig379_with_boars.csv")
+write_csv(sig_counts, "ARD_sig379_counts_by_boar.csv")
+
+## Split the data by which boars share each SNP, Contains all SNP info
+
+# One boar only
+b1_snps <- sig_boars %>% filter(boar_label == "B1")
+b2_snps <- sig_boars %>% filter(boar_label == "B2")
+b3_snps <- sig_boars %>% filter(boar_label == "B3")
+
+# Shared between two
+b1b2_snps <- sig_boars %>% filter(boar_label == "B1,B2")
+b1b3_snps <- sig_boars %>% filter(boar_label == "B1,B3")
+b2b3_snps <- sig_boars %>% filter(boar_label == "B2,B3")
+
+# Shared among all three
+shared_all <- sig_boars %>% filter(boar_label == "B1,B2,B3")
+
+# Write each to CSV
+write_csv(b1_snps, "B1_unique_SNPs.csv")
+write_csv(b2_snps, "B2_unique_SNPs.csv")
+write_csv(b3_snps, "B3_unique_SNPs.csv")
+write_csv(shared_all, "Shared_all3_SNPs.csv")
+
+```
+
+### Write CSVs for only CHROM and POS for the above chunk
+```{r}
+#| label: Write CSVs for CHROM and POS
+#| warning: FALSE
+#| echo: TRUE
+
+## Same as above chunk but only saving the CHROM and POS information for downstream analysis (SNPeff)
+
+# One boar only
+b1_snps_CHROMPOSonly <- sig_boars %>% filter(boar_label == "B1") %>% select(CHROM, POS)
+b2_snps_CHROMPOSonly <- sig_boars %>% filter(boar_label == "B2") %>% select(CHROM, POS)
+b3_snps_CHROMPOSonly <- sig_boars %>% filter(boar_label == "B3") %>% select(CHROM, POS)
+
+# Shared between two
+b1b2_snps_CHROMPOSonly <- sig_boars %>% filter(boar_label == "B1,B2") %>% select(CHROM, POS)
+b1b3_snps_CHROMPOSonly <- sig_boars %>% filter(boar_label == "B1,B3") %>% select(CHROM, POS)
+b2b3_snps_CHROMPOSonly <- sig_boars %>% filter(boar_label == "B2,B3") %>% select(CHROM, POS)
+
+# Shared among all three
+shared_all_CHROMPOSonly <- sig_boars %>% filter(boar_label == "B1,B2,B3") %>% select(CHROM, POS)
+
+# Write each to CSV
+write_csv(b1_snps_CHROMPOSonly, "SNPs_B1_unique.csv")
+write_csv(b2_snps_CHROMPOSonly, "SNPs_B2_unique.csv")
+write_csv(b3_snps_CHROMPOSonly, "SNPs_B3_unique.csv")
+write_csv(b1b2_snps_CHROMPOSonly, "SNPs_B1B2_shared.csv")
+write_csv(b1b3_snps_CHROMPOSonly, "SNPs_B1B3_shared.csv")
+write_csv(b2b3_snps_CHROMPOSonly, "SNPs_B2B3_shared.csv")
+write_csv(shared_all_CHROMPOSonly, "SNPs_all3_shared.csv")
+
+
+```
+
+# Fishers Exact Test for each Sig SNP per boar 
+```{r}
+#| label: Fishers Exact Test per boar
+#| warning: FALSE
+#| echo: TRUE
+
+# This will create a function that creates/joins the significant SNPs into a table with all relevant information and perform a FET on a per boar basis for each SNP
+
+# This tests whether or not the SNPs that were above the Log(pVal) = 4 on the manhattan are actually different in a single boar rather than combined
+
+add_boar_fisher <- function(sig_df, boar_df, boar_name) {
+  boar_counts <- boar_df %>%
+    select(CHROM, POS, ALT_DP_low, REF_DP_low, ALT_DP_high, REF_DP_high) %>%
+    rename(
+      ALT_low  = ALT_DP_low,
+      REF_low  = REF_DP_low,
+      ALT_high = ALT_DP_high,
+      REF_high = REF_DP_high) %>%
+    rename_with(~ paste0(., "_", boar_name),
+                c(ALT_low, REF_low, ALT_high, REF_high))
+
+  sig_df %>%
+    left_join(boar_counts, by = c("CHROM", "POS")) %>%
+    mutate(
+      !!paste0("fisher_p_", boar_name) :=
+        pmap_dbl(
+          list(
+            .data[[paste0("ALT_low_",  boar_name)]],
+            .data[[paste0("REF_low_",  boar_name)]],
+            .data[[paste0("ALT_high_", boar_name)]],
+            .data[[paste0("REF_high_", boar_name)]]),
+          function(ALT_low, REF_low, ALT_high, REF_high) {
+            if (any(is.na(c(ALT_low, REF_low, ALT_high, REF_high)))) return(NA_real_)
+            mat <- matrix(c(ALT_high, REF_high, ALT_low, REF_low),
+                          nrow = 2, byrow = TRUE)
+            if (sum(mat) == 0) return(NA_real_)
+            fisher.test(mat)$p.value
+          }
+        )
+    )
+}
+
+sig_fisher <- sig_boars %>%
+  add_boar_fisher(B1_all_filtered, "B1") %>%
+  add_boar_fisher(B2_all_filtered, "B2") %>%
+  add_boar_fisher(B3_all_filtered, "B3")
+
+```
+
+### Table of FET p values
+```{r}
+#| label: Table of FET 
+#| warning: FALSE
+#| echo: TRUE
+
+# This creates a more tidy table that has all significant SNPs and associated boars with FET p values
+sig_table <- sig_fisher %>%
+  select(
+    CHROM, CHR, POS, boar_label,
+    starts_with("ALT_low_"),
+    starts_with("REF_low_"),
+    starts_with("ALT_high_"),
+    starts_with("REF_high_"),
+    starts_with("fisher_p_")) %>%
+  pivot_longer(
+    cols = -c(CHROM, CHR, POS, boar_label),
+    names_to = c("metric", "boar"),
+    names_pattern = "(.+)_((?:B1|B2|B3))",
+    values_to = "value") %>%
+  pivot_wider(
+    names_from = metric,
+    values_from = value) %>%
+  filter(!(is.na(ALT_low) & is.na(REF_low) & is.na(ALT_high) & is.na(REF_high))) %>%
+  mutate(
+    AF_low  = ALT_low  / (ALT_low  + REF_low),
+    AF_high = ALT_high / (ALT_high + REF_high)) %>%
+  arrange(CHR, POS, boar)
+
+view(sig_table)
+
+```
+
+### Filtering out FET p values
+```{r}
+#| label: Filtering out FET p values
+#| warning: FALSE
+#| echo: TRUE
+
+# Filter out p values less than 0.05 from FET
+filtered_sig <- sig_table %>%
+  filter(fisher_p < 0.059)
+
+# Counting the number of total rows, kept rows, and removed rows
+total_rows   <- nrow(sig_table)
+kept_rows    <- nrow(filtered_sig)
+removed_rows <- total_rows - kept_rows
+
+# Identify unique SNPs that were removed (if any boar fails, most likely from overinflation of AF from Z test)
+removed_snps <- sig_table %>%
+  filter(fisher_p >= 0.059) %>%
+  distinct(CHROM, POS)
+
+n_removed_snps <- nrow(removed_snps)
+
+# Count remaining SNPs after filtering
+kept_snps <- filtered_sig %>%
+  distinct(CHROM, POS)
+
+n_kept_snps <- nrow(kept_snps)
+
+# Count how many SNP–boar pairs passed FET per boar
+kept_per_boar <- filtered_sig %>%
+  count(boar)
+
+# Count SNPs fully supported in all boars they appear in
+fully_supported <- filtered_sig %>%
+  group_by(CHROM, POS) %>%
+  summarise(
+    n_boars_tested = n(),
+    n_boars_passed = sum(fisher_p < 0.05),
+    .groups = "drop") %>%
+  filter(n_boars_tested == n_boars_passed)
+
+n_fully_supported <- nrow(fully_supported)
+
+# Summary table of all of the above metrics
+summary_table <- tibble(
+  metric = c(
+    "Total SNP–boar rows",
+    "Kept rows (p < 0.05)",
+    "Removed rows (p ≥ 0.05)",
+    "Unique SNPs removed",
+    "Unique SNPs kept",
+    "Fully supported SNPs"),
+  count = c(
+    total_rows,
+    kept_rows,
+    removed_rows,
+    n_removed_snps,
+    n_kept_snps,
+    n_fully_supported))
+
+summary_table
+
+
+
+```
+### Filtering and Counting Significant SNPs 
+```{r}
+#| label: Filtering and counting Sig SNPs
+#| warning: FALSE
+#| echo: TRUE
+
+# Find out how many SNPs belong to each boar after filtering
+# B1, B2, B3, B1B2, B1B3, B2B3 might inflate due to the removal of boars in combined SNPs, this is okay and expected
+
+# Filter FET p-values from Significant SNP
+filtered_sig <- sig_table %>%
+  filter(fisher_p < 0.059)
+
+# Counts of SNPs per boar
+boar_combination_counts <- filtered_sig %>%
+  group_by(CHROM, POS) %>%
+  summarise(
+    boar_label = paste(sort(unique(boar)), collapse = ","),
+    .groups = "drop") %>%
+  count(boar_label, sort = TRUE)
+
+# Adding a total row
+total_row <- tibble(
+  boar_label = "Total significant SNPs remaining",
+  n = sum(boar_combination_counts$n))
+
+# Binding the total row with the count table
+boar_combination_counts_with_total <- bind_rows(
+  boar_combination_counts,
+  total_row)
+
+boar_combination_counts_with_total
+
+# Save filtered Sig SNPs as .csv for GO use later
+write.csv(filtered_sig, "filtered_sig.csv", row.names = FALSE)
+
+write.csv(
+  boar_combination_counts_with_total,
+  "boar_combination_counts_with_total.csv",
+  row.names = FALSE)
+
+```
+
+
+# Plotting allele distributions for High/Low and Merged populations per boar
+```{r}
+#| label: Plotting AF distributions
+#| warning: FALSE
+#| echo: TRUE
+
+# Join B1, B2, B3 from Significant SNPs with filters
+sig_snps_filtered <- filtered_sig %>%
+  distinct(CHROM, POS)
+
+B1_sig <- B1_all_filtered %>%
+  semi_join(sig_snps_filtered, by = c("CHROM", "POS"))
+
+B2_sig <- B2_all_filtered %>%
+  semi_join(sig_snps_filtered, by = c("CHROM", "POS"))
+
+B3_sig <- B3_all_filtered %>%
+  semi_join(sig_snps_filtered, by = c("CHROM", "POS"))
+
+# Bind rows together into 1 table, create High/Low labels
+af_long_sig <- bind_rows(
+  B1_sig %>% transmute(boar = "B1", AF_low, AF_high),
+  B2_sig %>% transmute(boar = "B2", AF_low, AF_high),
+  B3_sig %>% transmute(boar = "B3", AF_low, AF_high)) %>%
+  pivot_longer(cols = c(AF_low, AF_high),
+               names_to = "population",
+               values_to = "AF") %>%
+  filter(!is.na(AF), AF > 0, AF < 1) %>%
+  mutate(population = factor(
+    population,
+    levels = c("AF_low", "AF_high"),
+    labels = c("Low", "High")))
+
+# Create plots for High/Low AF populations
+p_af_sig <- ggplot(af_long_sig, aes(x = AF, fill = population, colour = population)) +
+  geom_density(alpha = 0.35, adjust = 0.4) +
+  facet_grid(~ boar) +
+  geom_vline(xintercept = 0.5, linetype = "dashed") +
+  scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.25)) +
+  scale_fill_manual(values = c("Low" = "#00B0F6",
+                               "High" = "#F8766D")) +
+  scale_colour_manual(values = c("Low" = "#00B0F6",
+                                 "High" = "#F8766D")) +
+  labs(
+    title = "Allelic Ratio Distributions of High and Low populations per boar",
+    x = "ALT Allelic Ratio",
+    y = "Density",
+    fill = "",
+    colour = "") +
+  theme_bw(base_size = 14) +
+  theme(
+    strip.background = element_rect(fill = "grey90"),
+    strip.text = element_text(hjust = 0.5),
+    panel.grid = element_blank(),
+    panel.spacing = unit(1.5, "lines"))
+
+# Bind rows together for the merged
+af_merged_sig <- bind_rows(
+  B1_sig %>% transmute(boar = "B1", AF = AF_merged),
+  B2_sig %>% transmute(boar = "B2", AF = AF_merged),
+  B3_sig %>% transmute(boar = "B3", AF = AF_merged)) %>%
+  filter(!is.na(AF), AF > 0, AF < 1)
+
+# Plot merged AF 
+p_af_merged_sig <- ggplot(af_merged_sig, aes(x = AF)) +
+  geom_density(fill = "#00B0F6", colour = "#00B0F6", alpha = 0.35, adjust = 2) +
+  facet_grid(~ boar, labeller = labeller(boar = c(B1 = "S1", B2 = "S2", B3 = "S3"))) +
+  geom_vline(xintercept = 0.5, linetype = "dashed") +
+  scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.25)) +
+  labs(
+    title = "Allele Frequency Distribution of Merged population per boar",
+    x = "Reference Allelic Ratio",
+    y = "Density") +
+  theme_bw(base_size = 14) +
+  theme(
+    strip.background = element_rect(fill = "grey90"),
+    strip.text = element_text(hjust = 0.5),
+    panel.grid = element_blank(),
+    panel.spacing = unit(1.5, "lines"))
+
+# Print plots
+p_af_sig
+p_af_merged_sig
+
+# Save the plots
+ggsave("AFDistributions.png", p_af_sig, width = 10, height = 6, dpi = 300)
+ggsave("MergedAFDistributions.png", p_af_merged_sig, width = 10, height = 6, dpi = 300)
+
+
+```

@@ -1,0 +1,159 @@
+---
+title: "Mitochondrial length"
+date: "January 11th, 2026"
+author: "Tyler Weide"
+format:
+  html:
+    theme: "Cosmo"
+    toc: true
+    number-depth: 3
+    html-math-method: katex
+    code-fold: true
+    page-layout: full
+    embed-resources: true
+    standalone: true
+---
+
+## 
+<!-- Set Knitr Options -->
+
+```{r}
+#| label: knitr_setup
+#| warning: false
+#| echo: false
+
+# set options for knitr (engine that will render everything)
+knitr::opts_chunk$set(echo       = TRUE,
+                      warning    = FALSE,
+                      error      = FALSE,
+                      message = FALSE,
+                      fig.height = 6,
+                      fig.width  = 8
+                      )
+
+```
+
+<!-- Setup Code -->
+# Setting up the code and reading in the dataset
+```{r}
+
+#| label: setup_code 
+#| warning: FALSE
+#| echo: TRUE
+
+#==============================================================================#
+# Setup Options
+#==============================================================================#
+
+# remove all objects if restarting script
+rm(list=ls())
+
+# set options for R
+options(
+  tibble.width = Inf,   # print all columns in tibble
+  scipen = 999          # remove scientific notation
+)
+
+suppressPackageStartupMessages(library(tidyverse))
+#==============================================================================#
+# Packages
+#==============================================================================#
+
+# load libraries
+library(knitr)
+library(readr)
+library(tidyr)
+library(ggplot2)
+library(ggpattern)
+library(tidyverse)
+library(dplyr)
+library(effectsize)
+#==============================================================================#
+
+#==============================================================================#
+
+# set all paths
+path_main    <- "."
+#path_data    <- str_c(path_main, "Data/",    sep="")
+#path_plots   <- str_c(path_main, "Plots",   sep="")
+#path_scripts <- str_c(path_main, "Scripts/", sep="")
+
+#==============================================================================#
+# Set Inputs
+#==============================================================================#
+
+# File names
+LowMito <- "Low_measurements.csv"
+HighMito <- "High_measurements.csv"
+
+
+#==============================================================================#
+# Check session info again
+#==============================================================================#
+
+# check sessionInfo again
+#sessionInfo()
+
+
+#Read in the combined dataset
+
+Low <- read_delim(
+  file      = LowMito,
+  skip = 1,
+  delim     = ",",
+  col_names = c("Number", "Measurement"),
+  col_types = "nn")
+
+High <- read_delim(
+  file      = HighMito,
+  skip = 1,
+  delim     = ",",
+  col_names = c("Number", "Measurement"),
+  col_types = "nn")
+```
+
+# Welch's T-test
+```{r}
+#| label: Welch's T-test
+#| warning: false
+#| echo: false
+
+# Welch's Two-sided T-test (default, does NOT assume equal variance here)
+t.test(High$Measurement, Low$Measurement)
+
+# This shows effect size, not pooling SD
+cohens_d(
+  High$Measurement,
+  Low$Measurement,
+  pooled_sd = FALSE)
+
+```
+
+# Plot for publication
+```{r}
+#| label: Plots
+#| warning: false
+#| echo: false
+
+# Create dataframe that binds the rows of both low and high, order them as such
+mito_df <- bind_rows(
+  High %>% mutate(Population = "High"),
+  Low  %>% mutate(Population = "Low")) %>%
+  mutate(Population = factor(Population, levels = c("Low", "High")))
+
+# plot
+Raincloud_Plot <- ggplot(mito_df, aes(x = Population, y = Measurement)) +
+  geom_violin(trim = FALSE, fill = "grey90", color = NA) +
+  geom_boxplot(width = 0.18, outlier.shape = NA) +
+  geom_jitter(width = 0.12, alpha = 0.18, size = 0.55) +
+  stat_summary(fun = mean, geom = "point", size = 2.2) +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.08) +
+  theme_classic(base_size = 12) +
+  xlab("Population") +
+  ylab("Mitochondrial sheath length (µm)")
+
+Raincloud_Plot
+
+# save at or above 300dpi as PNG
+ggsave(filename = "Mitochondrial_Sheath_Length.png", plot = Raincloud_Plot, width = 14, height = 10, units = "in", dpi = 300)
+```
