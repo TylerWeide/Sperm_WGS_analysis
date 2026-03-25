@@ -10,6 +10,9 @@
 #SBATCH --output=BWA_Align_Trimmed.out
 #SBATCH --error=BWA_Align_Trimmed.err
 
+# NOTE: Paths are specific to ISU HPC environment (/work/ABG/...).
+# Update paths if running on a different system.
+
 module load bwa
 module load samtools
 
