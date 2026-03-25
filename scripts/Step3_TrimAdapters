@@ -8,6 +8,9 @@
 #SBATCH --output="Trim_FastQC.out"
 #SBATCH --error="Trim_FastQC.err"
 
+# NOTE: Paths are specific to ISU HPC environment (/work/ABG/...).
+# Update paths if running on a different system.
+
 # LOAD REQUIRED MODULES
 module load fastqc
 module load trimgalore
