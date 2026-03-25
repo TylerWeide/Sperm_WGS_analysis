@@ -10,6 +10,9 @@
 #SBATCH --mail-user=tjweide@iastate.edu
 #SBATCH --mail-type=END,FAIL
 
+# NOTE: Paths are specific to ISU HPC environment (/work/ABG/...).
+# Update paths if running on a different system.
+
 module load samtools
 
 cd /work/ABG/tjweide/Genomics/Mito_WGS_2025/Aligned_Individual
