@@ -9,6 +9,8 @@
 #SBATCH --output="Step1a_output"
 #SBATCH --error="Step1a_error"
 
+# NOTE: Paths are specific to ISU HPC environment (/work/ABG/...).
+# Update paths if running on a different system.
 
 # Navigate to working directory
 cd /work/ABG/tjweide/Genomics/Mito_WGS_2025
