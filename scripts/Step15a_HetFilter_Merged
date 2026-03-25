@@ -18,19 +18,19 @@ OUT_DIR="/work/ABG/tjweide/Genomics/Mito_WGS_2025/VCF/Genotyped/Filtered/Merged/
 
 bcftools view -v snps -f PASS ${IN_DIR}/1.filtered.vcf.gz | \
 bcftools filter \
-  -i 'GT="het" && FMT/GQ>=20 && FMT/DP>=10 && FMT/DP<=60' \
+  -i 'GT="het" && FMT/GQ>=20 && FMT/DP>=10 && FMT/DP<=70' \
   -Oz -o ${OUT_DIR}/1.final.vcf.gz &
 
 # 2
 bcftools view -v snps -f PASS ${IN_DIR}/2.filtered.vcf.gz | \
 bcftools filter \
-  -i 'GT="het" && FMT/GQ>=20 && FMT/DP>=10 && FMT/DP<=60' \
+  -i 'GT="het" && FMT/GQ>=20 && FMT/DP>=10 && FMT/DP<=70' \
   -Oz -o ${OUT_DIR}/2.final.vcf.gz &
 
 # 3
 bcftools view -v snps -f PASS ${IN_DIR}/3.filtered.vcf.gz | \
 bcftools filter \
-  -i 'GT="het" && FMT/GQ>=20 && FMT/DP>=10 && FMT/DP<=60' \
+  -i 'GT="het" && FMT/GQ>=20 && FMT/DP>=10 && FMT/DP<=70' \
   -Oz -o ${OUT_DIR}/3.final.vcf.gz &
 
 wait
