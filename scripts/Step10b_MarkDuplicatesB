@@ -40,6 +40,30 @@ picard MarkDuplicates \
   REMOVE_DUPLICATES=true \
   CREATE_INDEX=true &
 
+# Sample 2-2
+picard MarkDuplicates \
+  I=$IN_DIR/2-2.dedup.rg.sorted.bam \
+  O=$OUT_DIR/2-2.dedup.rg.dedup.bam \
+  M=$OUT_DIR/2-2.metrics.txt \
+  REMOVE_DUPLICATES=true \
+  CREATE_INDEX=true &
+
+# Sample 3-1
+picard MarkDuplicates \
+  I=$IN_DIR/3-1.dedup.rg.sorted.bam \
+  O=$OUT_DIR/3-1.dedup.rg.dedup.bam \
+  M=$OUT_DIR/3-1.metrics.txt \
+  REMOVE_DUPLICATES=true \
+  CREATE_INDEX=true &
+
+# Sample 3-2
+picard MarkDuplicates \
+  I=$IN_DIR/3-2.dedup.rg.sorted.bam \
+  O=$OUT_DIR/3-2.dedup.rg.dedup.bam \
+  M=$OUT_DIR/3-2.metrics.txt \
+  REMOVE_DUPLICATES=true \
+  CREATE_INDEX=true &
+
 wait
 
 
