@@ -51,7 +51,7 @@ Scripts are numbered to reflect execution order.
     - Step12a_HaplotypeCaller_Individual  
     - Step12b_HaplotypeCaller_Merged  
 
-15. Joint genotyping (GATK)  
+15. Genotyping (GATK)  
     - Step13b_GenotypingGATK_Individual_A  
     - Step13b_GenotypingGATK_Individual_B  
 
