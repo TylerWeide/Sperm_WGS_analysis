@@ -36,7 +36,7 @@ Raw sequencing data were processed using a stepwise pipeline:
   - Individual subpopulations  
   - Merged populations (per boar)  
 - Genotyping using GATK GenotypeGVCFs  
-- Hard filtering of SNPs using GATK-recommended thresholds  
+- Hard filtering of SNPs 
 - Filtering for high-confidence heterozygous SNPs  
 - Removal of SNPs located within repeat regions  
 
