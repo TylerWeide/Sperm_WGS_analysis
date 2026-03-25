@@ -9,6 +9,9 @@
 #SBATCH --mail-user=tjweide@iastate.edu
 #SBATCH --mail-type=END,FAIL
 
+# NOTE: Paths are specific to ISU HPC environment (/work/ABG/...).
+# Update paths if running on a different system.
+
 module load gatk
 
 REF="/work/ABG/tjweide/Genomics/References/GCF_000003025.6_Sscrofa11.1_genomic.fna"
