@@ -9,7 +9,10 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
 #SBATCH --mail-type=FAIL
-#SBATCH --mail-user=tyweide@iastate.edu
+#SBATCH --mail-user=tjweide@iastate.edu
+
+# NOTE: Paths are specific to ISU HPC environment (/work/ABG/...).
+# Update paths if running on a different system.
 
 echo "🔍 Starting MultiQC at: $(date)"
 
