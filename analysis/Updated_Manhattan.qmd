@@ -246,9 +246,9 @@ B3_all_filtered <- process_boar(B3_all, "Boar3")
 filter_dp <- function(df, name) {
   out <- df %>%
     dplyr::filter(
-      ALT_DP_low > 5,  REF_DP_low > 5,
-      ALT_DP_high > 5, REF_DP_high > 5,
-      ALT_DP_merged > 5, REF_DP_merged > 5)
+      ALT_DP_low > 10,  REF_DP_low > 10,
+      ALT_DP_high > 10, REF_DP_high > 10,
+      ALT_DP_merged > 10, REF_DP_merged > 10)
   cat(name, "- kept:", nrow(out), "| removed:", nrow(df) - nrow(out), "\n")
   write.csv(out, paste0(name, "_QC_SNPs_DP.csv"), row.names = FALSE)
   out
@@ -384,7 +384,7 @@ manhattan
 # Saves the plot 
 ggsave("Manhattan_ARD_all3boars.png", manhattan, width = 10, height = 6, units = "in", dpi = 300)
 
-# Counts the number of significant snps above the FDR corrected line of 0.0001
+# Counts the number of significant snps above the corrected line of 0.0001
 sig_snps <- man_df %>% filter(neglogP > 4)
 n_sig <- nrow(sig_snps)
 n_sig
@@ -713,7 +713,7 @@ view(sig_table)
 
 # Filter out p values less than 0.05 from FET
 filtered_sig <- sig_table %>%
-  filter(fisher_p < 0.059)
+  filter(fisher_p < 0.050)
 
 # Counting the number of total rows, kept rows, and removed rows
 total_rows   <- nrow(sig_table)
@@ -722,7 +722,7 @@ removed_rows <- total_rows - kept_rows
 
 # Identify unique SNPs that were removed (if any boar fails, most likely from overinflation of AF from Z test)
 removed_snps <- sig_table %>%
-  filter(fisher_p >= 0.059) %>%
+  filter(fisher_p >= 0.050) %>%
   distinct(CHROM, POS)
 
 n_removed_snps <- nrow(removed_snps)
@@ -781,7 +781,7 @@ summary_table
 
 # Filter FET p-values from Significant SNP
 filtered_sig <- sig_table %>%
-  filter(fisher_p < 0.059)
+  filter(fisher_p < 0.050)
 
 # Counts of SNPs per boar
 boar_combination_counts <- filtered_sig %>%
