@@ -9,6 +9,9 @@
 #SBATCH --output="FastQC_raw.out"
 #SBATCH --error="FastQC_raw.err"
 
+# NOTE: Paths are specific to ISU HPC environment (/work/ABG/...).
+# Update paths if running on a different system.
+
 # Load module
 module load fastqc
 
