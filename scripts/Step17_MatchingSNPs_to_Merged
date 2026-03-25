@@ -1,0 +1,51 @@
+#!/bin/bash
+#SBATCH --job-name=isec_simple
+#SBATCH --output=isec_simple_%j.out
+#SBATCH --error=isec_simple_%j.err
+#SBATCH --cpus-per-task=6
+#SBATCH --mem=32G
+#SBATCH --time=08:00:00
+#SBATCH --mail-user=tjweide@iastate.edu
+#SBATCH --mail-type=END,FAIL
+
+# NOTE: Paths are specific to ISU HPC environment (/work/ABG/...).
+# Update paths if running on a different system.
+
+module load bcftools
+
+# pick the boar (defaults to 1) 
+BOAR="*"
+
+# inputs
+IND1=${BOAR}-1.final.vcf.gz
+IND2=${BOAR}-2.final.vcf.gz
+MERG=${BOAR}.final.vcf.gz
+
+# output directory (B1/B2/B3)
+OUT=B${BOAR}
+mkdir -p "$OUT"
+
+# ensure indexes
+tabix -p vcf -f "$IND1"
+tabix -p vcf -f "$IND2"
+tabix -p vcf -f "$MERG"
+
+# exact allele-level intersection across all three
+bcftools isec --threads "${SLURM_CPUS_PER_TASK:-6}" -n=3 -c all -w1 -Oz \
+  -o ${OUT}/all3.isec.vcf.gz \
+  "$IND1" "$IND2" "$MERG"
+
+tabix -p vcf ${OUT}/all3.isec.vcf.gz
+
+# quick counts
+{
+  echo "Boar ${BOAR} counts:"
+  printf "  %-20s %s\n" "$IND1" "$(bcftools view -H "$IND1" | wc -l)"
+  printf "  %-20s %s\n" "$IND2" "$(bcftools view -H "$IND2" | wc -l)"
+  printf "  %-20s %s\n" "$MERG" "$(bcftools view -H "$MERG" | wc -l)"
+  printf "  %-20s %s\n" "all3.isec.vcf.gz" "$(bcftools view -H ${OUT}/all3.isec.vcf.gz | wc -l)"
+} | tee ${OUT}/counts.txt
+
+# table of intersected sites
+bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\n' \
+  ${OUT}/all3.isec.vcf.gz > ${OUT}/all3.isec.sites.tsv
