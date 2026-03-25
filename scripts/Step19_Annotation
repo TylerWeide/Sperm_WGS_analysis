@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+#SBATCH --job-name=snpeff_B2B3
+#SBATCH --output=logs/%x_%j.out
+#SBATCH --error=logs/%x_%j.err
+#SBATCH --time=12:00:00
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=tjweide@iastate.edu
+
+# NOTE: Paths are specific to ISU HPC environment (/work/ABG/...).
+# Update paths if running on a different system.
+
+# * indicates Boar number (B1, B2, B3, B1B2, B1B3, etc.)
+
+set -euo pipefail
+mkdir -p logs B*
+
+#Loading in specific environment for SNPeff
+module load micromamba
+eval "$(micromamba shell hook --shell=bash)"
+micromamba activate snpeff_env
+module load openjdk/21.0.3_9-vngib7s
+module load bcftools
+
+# Set paths for specific files and references
+GENOME="Sscrofa11_1"
+JAR="/work/ABG/tjweide/tjweide/Genomics/Mito_WGS_2025/SNPeff/snpEff.jar"
+CONFIG="/work/ABG/tjweide/tjweide/Genomics/Mito_WGS_2025/SNPeff/snpEff.config"
+DATADIR="/work/ABG/tjweide/tjweide/Genomics/Mito_WGS_2025/SNPeff/data"
+
+#Create tmpdir
+export TMPDIR="${SLURM_TMPDIR:-/tmp}/${SLURM_JOB_ID:-snpeff_SharedAll}"
+mkdir -p "$TMPDIR"
+
+# Input and output files (explicit paths)
+INPUT_VCF="/work/ABG/tjweide/tjweide/Genomics/Mito_WGS_2025/SNPeff/NewSNPeff/SharedAll_B*.vcf.gz"
+OUTPUT_VCF="/work/ABG/tjweide/tjweide/Genomics/Mito_WGS_2025/SNPeff/NewSNPeff/SharedAll/SharedAll_B*.snpeff.vcf"
+
+# Index input if not already indexed
+bcftools index -f "$INPUT_VCF"
+
+# Run snpEff annotation
+java -Xms4g -Xmx60g -Djava.io.tmpdir="$TMPDIR" -jar "$JAR" ann -v -noDownload \
+  -canon -ud 2000 \
+  -c "$CONFIG" -dataDir "$DATADIR" \
+  -csvStats "/work/ABG/tjweide/tjweide/Genomics/Mito_WGS_2025/SNPeff/NewSNPeff/SharedAll/SharedAll_B*_snpeff_stats.csv" \
+  "$GENOME" "$INPUT_VCF" > "$OUTPUT_VCF"
+
+# Compress and index the output VCF
+bgzip -f "$OUTPUT_VCF"
+tabix -f -p vcf "$OUTPUT_VCF.gz"
+
+# Verify annotation header
+bcftools view -h "$OUTPUT_VCF.gz" | grep -E '##fileformat|##INFO=<ID=ANN'
