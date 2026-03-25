@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+#SBATCH --job-name=subset_shared_sites
+#SBATCH --output=logs/%x_%j.out
+#SBATCH --error=logs/%x_%j.err
+#SBATCH --time=01:00:00
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=tjweide@iastate.edu
+
+# NOTE: Paths are specific to ISU HPC environment (/work/ABG/...).
+# Update paths if running on a different system.
+
+set -euo pipefail
+mkdir -p logs
+
+module load micromamba
+eval "$(micromamba shell hook --shell=bash)"
+micromamba activate snpeff_env
+
+module load openjdk/21.0.3_9-vngib7s
+module load bcftools
+
+# Defaults (override on sbatch command line)
+BASE="/work/ABG/tjweide/tjweide/Genomics/Mito_WGS_2025/SNPeff/NewSNPeff"
+
+SITES="${SITES:-$BASE/sites_SNPs_all3_shared.txt}"          # tab-delimited CHROM POS
+SOURCE_VCF="${SOURCE_VCF:-$BASE/*.final.vcf.gz}" # e.g. B1, B2, or B3
+OUT_VCF="${OUT_VCF:-$BASE/SharedAll_B*.vcf.gz}" # desired output name
+
+# Checks for listed genomic sites in .txt file generated from Step 17 (ISEC)
+[[ -s "$SITES" ]] || { echo "ERROR: sites file not found: $SITES" >&2; exit 2; }
+[[ -s "$SOURCE_VCF" ]] || { echo "ERROR: source VCF not found: $SOURCE_VCF" >&2; exit 3; }
+
+# Ensure index exists
+bcftools index -f "$SOURCE_VCF"
+
+# Subset to sites and bgzip/tabix
+bcftools view -T "$SITES" -Oz -o "$OUT_VCF" "$SOURCE_VCF"
+tabix -f -p vcf "$OUT_VCF"
+
+echo "Wrote: $OUT_VCF"
+echo "Index: ${OUT_VCF}.tbi"
