@@ -246,6 +246,8 @@ B3_all_filtered <- process_boar(B3_all, "Boar3")
 filter_dp <- function(df, name) {
   out <- df %>%
     dplyr::filter(
+      DP_TOTAL_low >= 30,
+      DP_TOTAL_high >= 30,
       ALT_DP_low > 10,  REF_DP_low > 10,
       ALT_DP_high > 10, REF_DP_high > 10,
       ALT_DP_merged > 10, REF_DP_merged > 10)
